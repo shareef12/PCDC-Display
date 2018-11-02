@@ -6,16 +6,13 @@ AUTHOR: Sam Cappella - sjcappella@gmail.com
 pip3 install tornado redis
 
 TODO:
- - check with redis down
  - change circles to missiles
- - slow down missiles
-
  - tie in with flag submission
 
  - fix box width
 """
 
-import functools
+import datetime
 import json
 import logging
 import os
@@ -29,6 +26,8 @@ import tornado.websocket
 
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+DELAY_SECONDS = 10
 
 WIDTH = 1024
 HEIGHT = 768
@@ -68,9 +67,9 @@ TEAMS = [
 SERVICE_RGB = {
     "shipyard"      : "#ff00ff",
     "plentyofsquids": "#ed5259",
-    "race"          : "#8e7618",
+    "race"          : "#40e0d0",
     "navalenc"      : "#f0c391",
-    "squidnotes"    : "#e5e5e5",
+    "squidnotes"    : "#00ff00",
 }
 
 LISTENERS = []
@@ -84,6 +83,10 @@ class IndexHandler(tornado.web.RequestHandler):
 
 class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
 
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, *kwargs)
+        self.timeouts = []
+
     def open(self):
         print("[*] websocket opened")
         LISTENERS.append(self)
@@ -96,6 +99,8 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
 
     def on_redis_message(self, msg):
         """Handle a message received from Redis."""
+        self.timeouts = self.timeouts[1:]
+
         try:
             data = json.loads(msg["data"].decode("ascii"))
         except:
@@ -116,11 +121,21 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
         print("[*] Closing connection.")
         LISTENERS.remove(self)
 
+        # Remove all pending timeouts
+        io_loop = tornado.ioloop.IOLoop.instance()
+        for timeout in self.timeouts:
+            io_loop.remove_timeout(timeout)
+
+
+def schedule_redis_message(io_loop, element, *args):
+    handle = io_loop.add_timeout(datetime.timedelta(seconds=DELAY_SECONDS), element.on_redis_message, *args)
+    element.timeouts.append(handle)
+
 
 def redis_listener(io_loop, pubsub):
     for message in pubsub.listen():
         for element in LISTENERS:
-            io_loop.add_callback(functools.partial(element.on_redis_message, message))
+            io_loop.add_callback(schedule_redis_message, io_loop, element, message)
 
 
 def main():

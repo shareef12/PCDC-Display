@@ -38,6 +38,7 @@ def test_all(iterations):
                     data = json.dumps(data)
                     redis_server.publish("a2f-visuals-production", data)
                     time.sleep(0.05)
+        time.sleep(3)
     logger.info("Finished tests.")
 
 

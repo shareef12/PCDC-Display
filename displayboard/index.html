@@ -141,7 +141,7 @@ function handleTraffic(msg) {
 			.attr("r", circleRadius)
 			.attr("fill",serviceRGB)
 			.transition()
-			  .duration(700)
+			  .duration(3000)
 			  .ease("ease-in")
 			  .attrTween("transform", translateAlong(lineGraph.node()))
 			  .each("end", function() {
@@ -154,14 +154,13 @@ function handleTraffic(msg) {
 	lineGraph.attr("stroke-dasharray", length + " " + length)
 		.attr("stroke-dashoffset", length)
 		.transition()
-			.duration(700)
+			.duration(3000)
 			.ease("ease-in")
 			.attr("stroke-dashoffset",0)
 			.each("end", function() {
 			  d3.select(this).
 			  transition().duration(100).style("opacity",0).remove();
 			});
-
 }
 
 
@@ -178,9 +177,9 @@ function handleTable(msg) {
 		var htmlLegendContent = "";
 		htmlLegendContent =  "<font color=\"#ff00ff\">[SHIPYARD] ";
 		htmlLegendContent += "<font color=\"#ed5259\">[PLENTYOFSQUIDS] ";
-		htmlLegendContent += "<font color=\"#8e7618\">[RACE] ";
+		htmlLegendContent += "<font color=\"#40e0d0\">[RACE] ";
 		htmlLegendContent += "<font color=\"#f0c391\">[NAVALENC] ";
-		htmlLegendContent += "<font color=\"#e5e5e5\">[SQUIDNOTES] ";
+		htmlLegendContent += "<font color=\"#00ff00\">[SQUIDNOTES] ";
 
 		var legend_height = 82;
 		var legend_width = 1014;
