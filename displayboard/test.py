@@ -11,14 +11,12 @@ import random
 import redis
 import time
 
-TEAMS = ["Army", "Air Force", "Observer", "Zombie"]
-SERVICES = ["shipyard", "plentyofsquids", "race", "navalenc", "squidnotes"]
-
-
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-logger.info('test')
+TEAMS = ["Army", "Air Force", "Observer", "Zombie"]
+SERVICES = ["shipyard", "plentyofsquids", "race", "navalenc", "squidnotes"]
+
 
 def test_all(iterations):
     logger.info("Running tests...")

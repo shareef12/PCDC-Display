@@ -59,7 +59,7 @@ function calcMidpoint(x1, y1, x2, y2, bend) {
 	else if(x2<x1) {
 		x1 = x2 + (x2=x1, 0);
 	}
-		
+
 	var radian = Math.atan(-((y2-y1)/(x2-x1)));
 	var r = Math.sqrt(x2-x1) + Math.sqrt(y2-y1);
 	var m1 = (x1+x2)/2;
@@ -68,7 +68,7 @@ function calcMidpoint(x1, y1, x2, y2, bend) {
 	var min = 2.5, max = 7.5;
 	//var min = 1, max = 7;
 	var arcIntensity = parseFloat((Math.random() * (max - min) + min).toFixed(2));
-        
+
 	if (bend === true) {
 		var a = Math.floor(m1 - r * arcIntensity * Math.sin(radian));
 		var b = Math.floor(m2 - r * arcIntensity * Math.cos(radian));
@@ -148,7 +148,7 @@ function handleTraffic(msg) {
 			    d3.select(this)
                             .transition().duration(500).attr("r", circleRadius * 2.5)
 			    .style("opacity",0).remove(); } );
-	 
+
 
 	var length = lineGraph.node().getTotalLength();
 	lineGraph.attr("stroke-dasharray", length + " " + length)
@@ -171,7 +171,7 @@ function handleTable(msg) {
 
     var teamWidth = 200
     var teamHeight = 150
-	
+
 	// Consider making size a passable item sent by application
 	if (msg.teamname === "Legend") {
 		var htmlLegendContent = "";
@@ -223,7 +223,7 @@ function handleTable(msg) {
 
 webSock.onmessage = function (e) {
 	// Put everything in an try/catch so we don't crash. Rather ignore a packet than crash the
-	// display during the competition.	
+	// display during the competition.
 	console.log("Got a websocket message...");
 	try {
 		var msg = JSON.parse(e.data);
