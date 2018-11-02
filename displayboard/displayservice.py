@@ -150,7 +150,7 @@ def main():
 
     # Connect to redis and start a thread to dispatch messages
     try:
-        r = redis.Redis()
+        r = redis.Redis(host="redis")
         ps = r.pubsub()
         ps.subscribe("a2f-visuals-production")
     except redis.ConnectionError:

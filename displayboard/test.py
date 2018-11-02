@@ -20,7 +20,7 @@ SERVICES = ["shipyard", "plentyofsquids", "race", "navalenc", "squidnotes"]
 
 def test_all(iterations):
     logger.info("Running tests...")
-    redis_server = redis.StrictRedis(host="localhost", port=6379, db=0)
+    redis_server = redis.StrictRedis(host="a2f.eecs.net", port=6379, db=0)
 
     for tick in range(0, iterations):
         logger.info("Starting round %d", tick)
