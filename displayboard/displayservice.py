@@ -29,20 +29,6 @@ logger = logging.getLogger(__name__)
 
 DELAY_SECONDS = 1
 
-WIDTH = 1024
-HEIGHT = 768
-
-TEAM_WIDTH = 200
-TEAM_HEIGHT = 150
-
-LEGEND_WIDTH = WIDTH - 10
-LEGEND_HEIGHT = 82
-
-BORDER_BUFFER = 5
-
-TEAM_AREA_HEIGHT = HEIGHT - LEGEND_HEIGHT
-
-
 TEAMS = [
     {"name": "Army",      "size": "medium", "color": "blue", "location": "left"},
     {"name": "Air Force", "size": "medium", "color": "blue", "location": "right"},
