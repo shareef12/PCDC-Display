@@ -6,10 +6,10 @@ AUTHOR: Sam Cappella - sjcappella@gmail.com
 pip3 install tornado redis
 
 TODO:
- - change circles to missiles
- - tie in with flag submission
+ - add support for named colors (not just color codes)
+ - fix box width (responsive SVG)
 
- - fix box width
+ - change circles to missiles (or any other image)
 """
 
 import datetime
@@ -27,7 +27,7 @@ import tornado.websocket
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-DELAY_SECONDS = 10
+DELAY_SECONDS = 1
 
 WIDTH = 1024
 HEIGHT = 768
@@ -43,34 +43,21 @@ BORDER_BUFFER = 5
 TEAM_AREA_HEIGHT = HEIGHT - LEGEND_HEIGHT
 
 
-TABLE_LOCATIONS = [
-    # Army - left
-    (BORDER_BUFFER, (TEAM_AREA_HEIGHT / 2) - (TEAM_HEIGHT / 2)),
-    # Air Force - right
-    (WIDTH - TEAM_WIDTH - BORDER_BUFFER, (TEAM_AREA_HEIGHT / 2) - (TEAM_HEIGHT / 2)),
-    # Observer - top middle
-    ((WIDTH / 2) - (TEAM_WIDTH / 2), 0 + BORDER_BUFFER),
-    # Zombie - bottom middle
-    ((WIDTH / 2) - (TEAM_WIDTH / 2), TEAM_AREA_HEIGHT - TEAM_HEIGHT - BORDER_BUFFER),
-    # Legend
-    (0 + BORDER_BUFFER, HEIGHT - LEGEND_HEIGHT)
-]
-
 TEAMS = [
-    {"type": "table", "teamname": "Army",      "shorthand": "Army"},
-    {"type": "table", "teamname": "Air Force", "shorthand": "Air Force"},
-    {"type": "table", "teamname": "Observer",  "shorthand": "Observer"},
-    {"type": "table", "teamname": "Zombie",    "shorthand": "Zombie"},
-    {"type": "table", "teamname": "Legend",    "shorthand": "Legend"},
+    {"name": "Army",      "size": "medium", "color": "blue", "location": "left"},
+    {"name": "Air Force", "size": "medium", "color": "blue", "location": "right"},
+    {"name": "Observer",  "size": "medium", "color": "blue", "location": "top"},
+    {"name": "Zombie",    "size": "medium", "color": "blue", "location": "bottom"},
 ]
 
-SERVICE_RGB = {
-    "shipyard"      : "#ff00ff",
-    "plentyofsquids": "#ed5259",
-    "race"          : "#40e0d0",
-    "navalenc"      : "#f0c391",
-    "squidnotes"    : "#00ff00",
-}
+SERVICES = [
+    {"name": "shipyard",       "color": "#ff00ff"},
+    {"name": "plentyofsquids", "color": "#ed5259"},
+    {"name": "race",           "color": "#40e0d0"},
+    {"name": "navalenc",       "color": "#f0c391"},
+    {"name": "squidnotes",     "color": "#00ff00"},
+]
+SERVICE_RGB = {s["name"]: s["color"] for s in SERVICES}
 
 LISTENERS = []
 
@@ -91,11 +78,13 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
         print("[*] websocket opened")
         LISTENERS.append(self)
 
+        print("[*] Initializing legend")
+        msg = {"type": "legend", "services": SERVICES}
+        self.write_message(json.dumps(msg))
+
         print("[*] Initializing teams")
-        for i, team in enumerate(TEAMS):
-            team["x"] = TABLE_LOCATIONS[i][0]
-            team["y"] = TABLE_LOCATIONS[i][1]
-            self.write_message(json.dumps(team))
+        msg = {"type": "teams", "teams": TEAMS}
+        self.write_message(json.dumps(msg))
 
     def on_redis_message(self, msg):
         """Handle a message received from Redis."""
