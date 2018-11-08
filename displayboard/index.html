@@ -5,10 +5,10 @@
 <link href='/static/index.css' rel='stylesheet'>
 
 </head>
-<body>
-<script>
 
-// connect to the server
+<body>
+
+<script>
 var proto = (window.location.protocol === "https") ? "wss:" : "ws:";
 var webSocket = new WebSocket(proto + "//" + location.host + "/websocket");
 
