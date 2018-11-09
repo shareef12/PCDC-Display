@@ -12,16 +12,18 @@
 var proto = (window.location.protocol === "https") ? "wss:" : "ws:";
 var webSocket = new WebSocket(proto + "//" + location.host + "/websocket");
 
-var WIDTH = 1024;
-var HEIGHT = 768;
 var BORDER_WIDTH = 10;
+var LEGEND_HEIGHT = 82;
+
+var TEAM_WIDTH = 200;
+var TEAM_HEIGHT = 150;
 
 var g_teams = [];
 var g_legend = null;
 
 var svg = d3.select("body").append("svg")
-                           .attr("width", WIDTH)
-                           .attr("height", HEIGHT)
+                           .attr("width", document.body.clientWidth)
+                           .attr("height", document.body.clientHeight)
                            .attr("class", "pcdccontainer");
 
 
@@ -155,7 +157,7 @@ function handleTraffic(msg) {
 }
 
 function getTeamX(loc) {
-  var teamWidth = 200;
+  var windowWidth = document.body.clientWidth;
   switch(loc) {
     case "top-left":
     case "left":
@@ -164,17 +166,18 @@ function getTeamX(loc) {
     case "top":
     case "middle":
     case "bottom":
-      return (WIDTH / 2) - (teamWidth / 2);
+      return (windowWidth / 2) - (TEAM_WIDTH / 2);
     case "top-right":
     case "right":
     case "bottom-right":
-      return WIDTH - teamWidth - BORDER_WIDTH;
+      return windowWidth - TEAM_WIDTH - BORDER_WIDTH;
   }
   return null;
 }
 
 function getTeamY(loc) {
-  var teamHeight = 150;
+  var windowHeight = document.body.clientHeight;
+  var teamAreaHeight = windowHeight - LEGEND_HEIGHT - BORDER_WIDTH;
   switch(loc) {
     case "top-left":
     case "top":
@@ -184,25 +187,24 @@ function getTeamY(loc) {
     case "left":
     case "middle":
     case "right":
-      return ((HEIGHT - 82) / 2) - (teamHeight / 2);
+      return (teamAreaHeight / 2) - (TEAM_HEIGHT / 2);
     case "bottom-left":
     case "bottom":
     case "bottom-right":
-      return (HEIGHT - 82) - teamHeight - BORDER_WIDTH;
+      return teamAreaHeight - TEAM_HEIGHT - BORDER_WIDTH;
   }
   return null;
 }
 
-function redrawTeams()
+function redraw()
 {
-  var g = svg.append("g");
+  svg.selectAll("svg").data(g_teams)
+     .attr("x", function(d) { return getTeamX(d.location); })
+     .attr("y", function(d) { return getTeamY(d.location); });
 }
 
 function handleTeams(msg) {
-  // TODO: Calculate these based on a percentage of screen size
   g_teams = msg.teams;
-  var teamWidth = 200;
-  var teamHeight = 150;
 
   var team = svg.selectAll("svg").data(g_teams).enter().append("svg")
                 .attr("x", function(d) { return getTeamX(d.location); })
@@ -211,19 +213,18 @@ function handleTeams(msg) {
   team.append("rect")
       .attr("x", 0)
       .attr("y", 0)
-      .attr("width", teamWidth)
-      .attr("height", teamHeight)
+      .attr("width", TEAM_WIDTH)
+      .attr("height", TEAM_HEIGHT)
       .attr("class", "blueTeam");
 
   team.append("foreignObject")
       .attr("x", 1)
       .attr("y", 1)
       .attr("z", 100)
-      .attr("height", teamHeight - 2)
-      .attr("width", teamWidth - 2)
+      .attr("height", TEAM_HEIGHT - 2)
+      .attr("width", TEAM_WIDTH - 2)
       .append("xhtml:span")
-      .html(function(d) { return d.name; });
-  console.log(svg.selectAll("svg"));
+        .html(function(d) { return d.name; });
 }
 
 function handleLegend(msg) {
@@ -236,26 +237,25 @@ function handleLegend(msg) {
     legendHtml += "</font>";
   }
 
-  // TODO: Dynamically set legend_width
-  var legend_height = 82;
-  var legend_width = 1014;
+  var legendWidth = document.body.clientWidth - BORDER_WIDTH * 2;
+  var windowHeight = document.body.clientHeight;
+
   var g = svg.append("g");
   g.append("rect")
-   .attr("x", 10)
-   .attr("y", 768 - legend_height)
-   .attr("height", legend_height)
-   .attr("width", legend_width)
+   .attr("x", BORDER_WIDTH)
+   .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH)
+   .attr("width", legendWidth)
+   .attr("height", LEGEND_HEIGHT)
    .attr("class", "legend");
 
   g.append("foreignObject")
-   .attr("x", 11)
-   .attr("y", 768 - legend_height + 1)
-   .attr("height", legend_height - 2)
-   .attr("width", legend_width - 2)
+   .attr("x", BORDER_WIDTH + 1)
+   .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH + 1)
+   .attr("width", legendWidth - 2)
+   .attr("height", LEGEND_HEIGHT - 2)
    .append("xhtml:span")
-   .attr("width", legend_width)
-   .attr("style", "font-size: 1.9em")
-   .html(legendHtml);
+     .attr("style", "font-size: 1.9em")
+     .html(legendHtml);
 }
 
 webSocket.onmessage = function (e) {
