@@ -1,9 +1,5 @@
 @import url(https://fonts.googleapis.com/css?family=Exo+2:100,700|Merriweather+Sans:300);
 
-html {
-  height: 100%;
-}
-
 body {
   background: black;
   background-color: #000000;
@@ -65,7 +61,7 @@ body {
 
 .blueTeam span {}
 
-.legend {
+.legend rect {
   fill: #FFFFFF;
   stroke: black;
   stroke-width: 3;
@@ -74,6 +70,5 @@ body {
 }
 
 .legend span {
-  max-width: 1142px;
   max-height: 100px;
 }

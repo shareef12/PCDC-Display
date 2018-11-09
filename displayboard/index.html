@@ -7,7 +7,6 @@
 </head>
 
 <body>
-
 <script>
 var proto = (window.location.protocol === "https") ? "wss:" : "ws:";
 var webSocket = new WebSocket(proto + "//" + location.host + "/websocket");
@@ -28,7 +27,7 @@ var svg = d3.select("body").append("svg")
 
 
 function lookupTeam(teamname) {
-  return d3.selectAll("rect")
+  return d3.selectAll(".team")
     .filter(function(d) {
       return d.name === teamname;
     })
@@ -156,6 +155,9 @@ function handleTraffic(msg) {
           });
 }
 
+/**
+ * Translates a relative location to an x coordinate.
+ */
 function getTeamX(loc) {
   var windowWidth = document.body.clientWidth;
   switch(loc) {
@@ -175,6 +177,9 @@ function getTeamX(loc) {
   return null;
 }
 
+/**
+ * Translates a relative location to a y coordinate.
+ */
 function getTeamY(loc) {
   var windowHeight = document.body.clientHeight;
   var teamAreaHeight = windowHeight - LEGEND_HEIGHT - BORDER_WIDTH;
@@ -196,26 +201,43 @@ function getTeamY(loc) {
   return null;
 }
 
+/**
+ * Handles resize events. Redraw all svg elements.
+ */
 function redraw()
 {
-  // resize the svg
-  svg.attr("width", document.body.clientWidth)
-     .attr("height", document.body.clientHeight);
+  var windowWidth = document.body.clientWidth;
+  var windowHeight = document.body.clientHeight;
 
-  // TODO: resize the legend
+  // resize the svg
+  svg.attr("width", windowWidth)
+     .attr("height", windowHeight);
+
+  // resize the legend
+  svg.selectAll(".legend")
+     .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH)
+     .attr("width", document.body.clientWidth - BORDER_WIDTH * 2);
 
   // move teams appropriately
-  svg.selectAll("svg").data(g_teams)
+  svg.selectAll(".team").data(g_teams)
      .attr("x", function(d) { return getTeamX(d.location); })
      .attr("y", function(d) { return getTeamY(d.location); });
 }
 
+/**
+ * Creates boxes for individual teams in response to a websocket message.
+ *
+ * This message should only be received once during websocket initialization.
+ * Team locations are specified as relative locations, and are translated to
+ * x/y coordinates in javascript.
+ */
 function handleTeams(msg) {
   g_teams = msg.teams;
 
-  var team = svg.selectAll("svg").data(g_teams).enter().append("svg")
+  var team = svg.selectAll(".team").data(g_teams).enter().append("svg")
                 .attr("x", function(d) { return getTeamX(d.location); })
-                .attr("y", function(d) { return getTeamY(d.location); });
+                .attr("y", function(d) { return getTeamY(d.location); })
+                .classed("team", true);
 
   team.append("rect")
       .attr("x", 0)
@@ -234,6 +256,11 @@ function handleTeams(msg) {
         .html(function(d) { return d.name; });
 }
 
+/**
+ * Creates the legend in response to a websocket message.
+ *
+ * This message should only be received once during websocket initialization.
+ */
 function handleLegend(msg) {
   var services = msg.services;
 
@@ -247,26 +274,34 @@ function handleLegend(msg) {
   var legendWidth = document.body.clientWidth - BORDER_WIDTH * 2;
   var windowHeight = document.body.clientHeight;
 
-  var g = svg.append("g");
+  var g = svg.append("svg")
+             .attr("x", BORDER_WIDTH)
+             .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH)
+             .attr("width", legendWidth)
+             .attr("height", LEGEND_HEIGHT)
+             .classed("legend", true);
+
+
   g.append("rect")
-   .attr("x", BORDER_WIDTH)
-   .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH)
-   .attr("width", legendWidth)
-   .attr("height", LEGEND_HEIGHT)
-   .attr("class", "legend");
+   .attr("x", 0)
+   .attr("y", 0)
+   .attr("width", "100%")
+   .attr("height", "100%");
 
   g.append("foreignObject")
-   .attr("x", BORDER_WIDTH + 1)
-   .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH + 1)
-   .attr("width", legendWidth - 2)
-   .attr("height", LEGEND_HEIGHT - 2)
+   .attr("x", "1%")
+   .attr("y", "1%")
+   .attr("width", "99%")
+   .attr("height", "99%")
    .append("xhtml:span")
      .attr("style", "font-size: 1.9em")
      .html(legendHtml);
 }
 
-window.addEventListener("resize", redraw);
 
+/**
+ * Dispatch messages from the websocket.
+ */
 webSocket.onmessage = function (e) {
   // Put everything in an try/catch so we don't crash. Rather ignore a packet than crash the
   // display during the competition.
@@ -290,6 +325,9 @@ webSocket.onmessage = function (e) {
   //  console.log("Recovered from error.")
   //}
 };
+
+// handle resize events from the browser
+window.addEventListener("resize", redraw);
 </script>
 </body>
 </html>
