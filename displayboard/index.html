@@ -18,13 +18,11 @@ var TEAM_WIDTH = 200;
 var TEAM_HEIGHT = 150;
 
 var g_teams = [];
-var g_legend = null;
 
 var svg = d3.select("body").append("svg")
                            .attr("width", document.body.clientWidth)
                            .attr("height", document.body.clientHeight)
                            .attr("class", "pcdccontainer");
-
 
 function lookupTeam(teamname) {
   return d3.selectAll(".team")
@@ -244,7 +242,7 @@ function handleTeams(msg) {
       .attr("y", 0)
       .attr("width", TEAM_WIDTH)
       .attr("height", TEAM_HEIGHT)
-      .attr("class", "blueTeam");
+      .style("fill", function(d) { return d.color; })
 
   team.append("foreignObject")
       .attr("x", 1)
@@ -253,7 +251,7 @@ function handleTeams(msg) {
       .attr("height", TEAM_HEIGHT - 2)
       .attr("width", TEAM_WIDTH - 2)
       .append("xhtml:span")
-        .html(function(d) { return d.name; });
+        .html(function(d) { return d.display_name; });
 }
 
 /**

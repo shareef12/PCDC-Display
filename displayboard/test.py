@@ -14,7 +14,7 @@ import time
 logging.basicConfig(level=logging.DEBUG)
 logger = logging.getLogger(__name__)
 
-TEAMS = ["Army", "Air Force", "Observer", "Zombie"]
+TEAMS = ["army", "airforce", "observer", "zombie"]
 SERVICES = ["shipyard", "plentyofsquids", "race", "navalenc", "squidnotes"]
 
 

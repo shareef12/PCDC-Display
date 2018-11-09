@@ -4,21 +4,16 @@
 AUTHOR: Sam Cappella - sjcappella@gmail.com
 
 pip3 install tornado redis
-
-TODO:
- - add support for named colors (not just color codes)
- - fix box width (responsive SVG)
-
- - change circles to missiles (or any other image)
 """
 
 import datetime
 import json
 import logging
 import os
-import redis
 import sys
 import threading
+
+import redis
 import tornado.httpserver
 import tornado.ioloop
 import tornado.web
@@ -29,14 +24,14 @@ logger = logging.getLogger(__name__)
 
 DELAY_SECONDS = 1
 
-# TODO: Add short name (id)
-# TODO: Add class
 TEAMS = [
-    {"name": "Army",      "color": "blue", "location": "left"},
-    {"name": "Air Force", "color": "blue", "location": "right"},
-    {"name": "Observer",  "color": "blue", "location": "top"},
-    {"name": "Zombie",    "color": "blue", "location": "bottom"},
+    {"name": "army",     "display_name": "Army",      "location": "left",   "color": "Olive"},
+    {"name": "airforce", "display_name": "Air Force", "location": "right",  "color": "Blue"},
+    {"name": "observer", "display_name": "Observer",  "location": "top",    "color": "Red"},
+    {"name": "zombie",   "display_name": "Zombie",    "location": "bottom", "color": "DimGray"},
 ]
+
+#for t in TEAMS: t["color"] = "blue"
 
 SERVICES = [
     {"name": "shipyard",       "color": "#ff00ff"},

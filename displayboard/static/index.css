@@ -36,30 +36,13 @@ body {
   word-wrap: break-word;
 }
 
-.redTeam {
-  height: 100%;
-  width: 100%;
-  fill: #FF0000;
-  background-position: center;
-  position: relative;
-  background-repeat: no-repeat;
-  stroke: black;
-  stroke-width: 6;
-  stroke-linecap: round;
-}
-
-.redTeam span {
-  max-width: 198px;
-}
-
-.blueTeam {
-  fill: #0000DD;
+.team rect {
   stroke: black;
   stroke-width: 3;
   stroke-linecap: round;
 }
 
-.blueTeam span {}
+.team span {}
 
 .legend rect {
   fill: #FFFFFF;
