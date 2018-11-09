@@ -11,11 +11,15 @@
 var proto = (window.location.protocol === "https") ? "wss:" : "ws:";
 var webSocket = new WebSocket(proto + "//" + location.host + "/websocket");
 
+// Team layout constants
 var BORDER_WIDTH = 10;
 var LEGEND_HEIGHT = 82;
-
 var TEAM_WIDTH = 200;
 var TEAM_HEIGHT = 150;
+
+// Traffic animation constants
+var ANIMATION_DURATION = 3000;
+var ANIMATION_BORDER_WIDTH = 10;
 
 var g_teams = [];
 
@@ -24,12 +28,15 @@ var svg = d3.select("body").append("svg")
                            .attr("height", document.body.clientHeight)
                            .attr("class", "pcdccontainer");
 
+/**
+ * Get the x and y coordinates for a team.
+ */
 function lookupTeam(teamname) {
-  return d3.selectAll(".team")
-    .filter(function(d) {
-      return d.name === teamname;
-    })
-    .data()[0];
+  var team = svg.selectAll(".team")
+                .filter(function(d) {
+                  return d.name === teamname;
+                });
+  return {"x": parseInt(team.attr("x")), "y": parseInt(team.attr("y"))};
 }
 
 function calcMidpoint(x1, y1, x2, y2, bend) {
@@ -86,71 +93,82 @@ function translateAlong(path) {
   }
 }
 
+/**
+ * Draw traffic between teams in response to a websocket message.
+ *
+ * Always send from the center of the source team to a random point within
+ * the receiving team.
+ */
 function handleTraffic(msg) {
+  var circleRadius = msg.size;
   var serviceRGB = msg.servicergb;
-  var from = lookupTeam(msg.from)
+  var from = lookupTeam(msg.from);
+  var to = lookupTeam(msg.to);
 
-  // Always send from the center of the box, but hit the target at a random point within a boundary of 10
-  var fromMidX, fromMidY, toRandomX, toRandomY, bend;
-  fromMidX = 98;
-  fromMidY = 74;
-  toMidX = Math.floor(Math.random() * (120 - 10 + 1)) + 10;
-  toMidY = Math.floor(Math.random() * (120 - 10 + 1)) + 10;
-  bend = true;
+  // compute the (x,y) locations for the start and end points
+  var bend = true;
+  var teamMidX = TEAM_WIDTH / 2;
+  var teamMidY = TEAM_HEIGHT / 2;
+  var fromX = from.x + teamMidX;
+  var fromY = from.y + teamMidY;
+  var toX = to.x + Math.floor(Math.random() * (TEAM_WIDTH - ANIMATION_BORDER_WIDTH * 2)) +
+                              ANIMATION_BORDER_WIDTH;
+  var toY = to.y + Math.floor(Math.random() * (TEAM_HEIGHT - ANIMATION_BORDER_WIDTH * 2)) +
+                              ANIMATION_BORDER_WIDTH;
 
-  console.log(from)
-  console.log(from.x)
-  var to = lookupTeam(msg.to)
-  console.log(to)
-  console.log(to.x)
-
-  var lineData = [{"x":from.x+fromMidX, "y":from.y+fromMidY},
-          calcMidpoint(from.x+fromMidX, from.y+fromMidY, to.x+toMidX, to.y+toMidY, bend),
-          {"x":to.x+toMidX,"y":to.y+toMidY}];
+  var lineData = [
+    {"x": fromX, "y": fromY},
+    calcMidpoint(fromX, fromY, toX, toY, bend),
+    {"x": toX, "y": toY}
+  ];
 
   var lineFunction = d3.svg.line()
-      .interpolate("basis")
-      .x(function(d) { return d.x; })
-      .y(function(d) { return d.y; });
+                           .interpolate("basis")
+                           .x(function(d) { return d.x; })
+                           .y(function(d) { return d.y; });
 
   var lineGraph = svg.append("path")
-      .attr("d", lineFunction(lineData))
-      .attr("opacity",0.8)
-      .attr("stroke", serviceRGB)
-      .attr("stroke-width", 2)
-      .attr("fill", "none");
+                     .attr("d", lineFunction(lineData))
+                     .attr("opacity",0.8)
+                     .attr("stroke", serviceRGB)
+                     .attr("stroke-width", 2)
+                     .attr("fill", "none");
 
   if (translateAlong(lineGraph.node()) === "ERROR") {
     return;
   }
 
-  var circleRadius = msg.size;
-
   // Circle follows the line
-  var dot = svg.append("circle")
-          .attr("r", circleRadius)
-          .attr("fill",serviceRGB)
-          .transition()
-            .duration(3000)
-            .ease("ease-in")
-            .attrTween("transform", translateAlong(lineGraph.node()))
-            .each("end", function() {
-              d3.select(this)
-                          .transition().duration(500).attr("r", circleRadius * 2.5)
-              .style("opacity",0).remove(); } );
+  svg.append("circle")
+     .attr("r", circleRadius)
+     .attr("fill", serviceRGB)
+     .transition()
+       .duration(ANIMATION_DURATION)
+       .ease("ease-in")
+       .attrTween("transform", translateAlong(lineGraph.node()))
+       .each("end", function() {
+         d3.select(this)
+           .transition()
+             .duration(500)
+             .attr("r", circleRadius * 2.5)
+             .style("opacity",0).remove();
+       });
 
 
   var length = lineGraph.node().getTotalLength();
   lineGraph.attr("stroke-dasharray", length + " " + length)
-      .attr("stroke-dashoffset", length)
-      .transition()
-          .duration(3000)
-          .ease("ease-in")
-          .attr("stroke-dashoffset",0)
-          .each("end", function() {
-            d3.select(this).
-            transition().duration(100).style("opacity",0).remove();
-          });
+           .attr("stroke-dashoffset", length)
+           .transition()
+             .duration(ANIMATION_DURATION)
+             .ease("ease-in")
+             .attr("stroke-dashoffset",0)
+             .each("end", function() {
+                d3.select(this)
+                  .transition()
+                    .duration(100)
+                    .style("opacity", 0)
+                    .remove();
+             });
 }
 
 /**
