@@ -198,6 +198,13 @@ function getTeamY(loc) {
 
 function redraw()
 {
+  // resize the svg
+  svg.attr("width", document.body.clientWidth)
+     .attr("height", document.body.clientHeight);
+
+  // TODO: resize the legend
+
+  // move teams appropriately
   svg.selectAll("svg").data(g_teams)
      .attr("x", function(d) { return getTeamX(d.location); })
      .attr("y", function(d) { return getTeamY(d.location); });
@@ -257,6 +264,8 @@ function handleLegend(msg) {
      .attr("style", "font-size: 1.9em")
      .html(legendHtml);
 }
+
+window.addEventListener("resize", redraw);
 
 webSocket.onmessage = function (e) {
   // Put everything in an try/catch so we don't crash. Rather ignore a packet than crash the
