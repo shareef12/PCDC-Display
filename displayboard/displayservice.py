@@ -29,11 +29,13 @@ logger = logging.getLogger(__name__)
 
 DELAY_SECONDS = 1
 
+# TODO: Add short name (id)
+# TODO: Add class
 TEAMS = [
-    {"name": "Army",      "size": "medium", "color": "blue", "location": "left"},
-    {"name": "Air Force", "size": "medium", "color": "blue", "location": "right"},
-    {"name": "Observer",  "size": "medium", "color": "blue", "location": "top"},
-    {"name": "Zombie",    "size": "medium", "color": "blue", "location": "bottom"},
+    {"name": "Army",      "color": "blue", "location": "left"},
+    {"name": "Air Force", "color": "blue", "location": "right"},
+    {"name": "Observer",  "color": "blue", "location": "top"},
+    {"name": "Zombie",    "color": "blue", "location": "bottom"},
 ]
 
 SERVICES = [

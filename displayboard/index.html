@@ -16,6 +16,9 @@ var WIDTH = 1024;
 var HEIGHT = 768;
 var BORDER_WIDTH = 10;
 
+var g_teams = [];
+var g_legend = null;
+
 var svg = d3.select("body").append("svg")
                            .attr("width", WIDTH)
                            .attr("height", HEIGHT)
@@ -25,7 +28,7 @@ var svg = d3.select("body").append("svg")
 function lookupTeam(teamname) {
   return d3.selectAll("rect")
     .filter(function(d) {
-      return d.teamname === teamname;
+      return d.name === teamname;
     })
     .data()[0];
 }
@@ -151,53 +154,63 @@ function handleTraffic(msg) {
           });
 }
 
+function getTeamX(loc) {
+  var teamWidth = 200;
+  switch(loc) {
+    case "top-left":
+    case "left":
+    case "bottom-left":
+      return BORDER_WIDTH;
+    case "top":
+    case "middle":
+    case "bottom":
+      return (WIDTH / 2) - (teamWidth / 2);
+    case "top-right":
+    case "right":
+    case "bottom-right":
+      return WIDTH - teamWidth - BORDER_WIDTH;
+  }
+  return null;
+}
+
+function getTeamY(loc) {
+  var teamHeight = 150;
+  switch(loc) {
+    case "top-left":
+    case "top":
+    case "top-right":
+      return BORDER_WIDTH;
+      break;
+    case "left":
+    case "middle":
+    case "right":
+      return ((HEIGHT - 82) / 2) - (teamHeight / 2);
+    case "bottom-left":
+    case "bottom":
+    case "bottom-right":
+      return (HEIGHT - 82) - teamHeight - BORDER_WIDTH;
+  }
+  return null;
+}
+
+function redrawTeams()
+{
+  var g = svg.append("g");
+}
+
 function handleTeams(msg) {
   // TODO: Calculate these based on a percentage of screen size
-  var teams = msg.teams;
+  g_teams = msg.teams;
   var teamWidth = 200;
   var teamHeight = 150;
 
-  for (var i = 0; i < teams.length; i++) {
+  for (var i = 0; i < g_teams.length; i++) {
     // Set team x and y location
-    var x = 0;
-    var y = 0;
-    switch(teams[i].location) {
-      case "top-left":
-      case "left":
-      case "bottom-left":
-        x = BORDER_WIDTH;
-        break;
-      case "top":
-      case "middle":
-      case "bottom":
-        x = (WIDTH / 2) - (teamWidth / 2);
-        break;
-      case "top-right":
-      case "right":
-      case "bottom-right":
-        x = WIDTH - teamWidth - BORDER_WIDTH;
-        break;
-    }
-
-    switch(teams[i].location) {
-      case "top-left":
-      case "top":
-      case "top-right":
-        y = BORDER_WIDTH;
-        break;
-      case "left":
-      case "middle":
-      case "right":
-        y = ((HEIGHT - 82) / 2) - (teamHeight / 2);
-        break;
-      case "bottom-left":
-      case "bottom":
-      case "bottom-right":
-        y = (HEIGHT - 82) - teamHeight - BORDER_WIDTH;
-        break;
-    }
+    var x = getTeamX(g_teams[i].location);
+    var y = getTeamY(g_teams[i].location);
 
     // TODO: Set color and size based on msg
+    // TODO: Ensure we set the name attribute correctly for generating traffic
     var g = svg.append("g");
     g.append("rect")
      .attr("x", x)
@@ -213,7 +226,7 @@ function handleTeams(msg) {
      .attr("height", teamHeight - 2)
      .attr("width", teamWidth - 2)
      .append("xhtml:span")
-     .html(teams[i].name);
+     .html(g_teams[i].name);
   }
 }
 
