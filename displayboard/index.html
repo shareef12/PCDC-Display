@@ -204,33 +204,26 @@ function handleTeams(msg) {
   var teamWidth = 200;
   var teamHeight = 150;
 
-  for (var i = 0; i < g_teams.length; i++) {
-    // Set team x and y location
-    var x = getTeamX(g_teams[i].location);
-    var y = getTeamY(g_teams[i].location);
+  var team = svg.selectAll("svg").data(g_teams).enter().append("svg")
+                .attr("x", function(d) { return getTeamX(d.location); })
+                .attr("y", function(d) { return getTeamY(d.location); });
 
-    // TODO: Set color and size based on msg
-    // TODO: Ensure we set the name attribute correctly for generating traffic
-    var g = svg.append("svg")
-               .attr("x", x)
-               .attr("y", y);
+  team.append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", teamWidth)
+      .attr("height", teamHeight)
+      .attr("class", "blueTeam");
 
-    g.append("rect")
-     .attr("x", 0)
-     .attr("y", 0)
-     .attr("width", teamWidth)
-     .attr("height", teamHeight)
-     .attr("class", "blueTeam");
-
-    g.append("foreignObject")
-     .attr("x", 1)
-     .attr("y", 1)
-     .attr("z", 100)
-     .attr("height", teamHeight - 2)
-     .attr("width", teamWidth - 2)
-     .append("xhtml:span")
-     .html(g_teams[i].name);
-  }
+  team.append("foreignObject")
+      .attr("x", 1)
+      .attr("y", 1)
+      .attr("z", 100)
+      .attr("height", teamHeight - 2)
+      .attr("width", teamWidth - 2)
+      .append("xhtml:span")
+      .html(function(d) { return d.name; });
+  console.log(svg.selectAll("svg"));
 }
 
 function handleLegend(msg) {
