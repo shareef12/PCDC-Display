@@ -26,16 +26,18 @@ def test_all(iterations):
         logger.info("Starting round %d", tick)
         for team in TEAMS:
             for service in random.sample(SERVICES, 2):
+                other_teams = TEAMS.copy()
+                other_teams.remove(team)
                 for i in range(5):
                     data = {
                         "service": service,
-                        "tick": tick,
-                        "defender": random.choice(TEAMS),
-                        "attacker": team,
+                        "from": team,
+                        "to": random.choice(other_teams),
+                        "size": 5,
                     }
                     data = json.dumps(data)
                     redis_server.publish("a2f-visuals-production", data)
-                    time.sleep(0.05)
+                    time.sleep(0.02)
         time.sleep(3)
     logger.info("Finished tests.")
 

@@ -71,6 +71,7 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
 
     def on_redis_message(self, msg):
         """Handle a message received from Redis."""
+        # TODO: Ensure we're removing the right element and we don't have leaks
         self.timeouts = self.timeouts[1:]
 
         try:
@@ -80,13 +81,12 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
             return
 
         service = data["service"]
-        tick = data["tick"]
-        defender = data["defender"]
-        attacker = data["attacker"]
+        from_team = data["from"]
+        to_team = data["to"]
+        size = data["size"]
         color = SERVICE_RGB[service]
-        size = 5
 
-        msg = {"type": "traffic", "from": defender, "to": attacker, "size": size, "servicergb": color}
+        msg = {"type": "traffic", "from": from_team, "to": to_team, "size": size, "color": color}
         self.write_message(json.dumps(msg))
 
     def on_close(self):
@@ -100,7 +100,8 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
 
 
 def schedule_redis_message(io_loop, element, *args):
-    handle = io_loop.add_timeout(datetime.timedelta(seconds=DELAY_SECONDS), element.on_redis_message, *args)
+    handle = io_loop.add_timeout(datetime.timedelta(seconds=DELAY_SECONDS),
+                                 element.on_redis_message, *args)
     element.timeouts.append(handle)
 
 

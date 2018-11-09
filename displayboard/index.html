@@ -24,8 +24,8 @@ var ANIMATION_BORDER_WIDTH = 10;
 var g_teams = [];
 
 var svg = d3.select("body").append("svg")
-                           .attr("width", document.body.clientWidth)
-                           .attr("height", document.body.clientHeight)
+                           .attr("width", window.innerWidth)
+                           .attr("height", window.innerHeight)
                            .attr("class", "pcdccontainer");
 
 /**
@@ -101,7 +101,7 @@ function translateAlong(path) {
  */
 function handleTraffic(msg) {
   var circleRadius = msg.size;
-  var serviceRGB = msg.servicergb;
+  var color = msg.color;
   var from = lookupTeam(msg.from);
   var to = lookupTeam(msg.to);
 
@@ -130,7 +130,7 @@ function handleTraffic(msg) {
   var lineGraph = svg.append("path")
                      .attr("d", lineFunction(lineData))
                      .attr("opacity",0.8)
-                     .attr("stroke", serviceRGB)
+                     .attr("stroke", color)
                      .attr("stroke-width", 2)
                      .attr("fill", "none");
 
@@ -141,7 +141,7 @@ function handleTraffic(msg) {
   // Circle follows the line
   svg.append("circle")
      .attr("r", circleRadius)
-     .attr("fill", serviceRGB)
+     .attr("fill", color)
      .transition()
        .duration(ANIMATION_DURATION)
        .ease("ease-in")
@@ -175,7 +175,7 @@ function handleTraffic(msg) {
  * Translates a relative location to an x coordinate.
  */
 function getTeamX(loc) {
-  var windowWidth = document.body.clientWidth;
+  var windowWidth = window.innerWidth;
   switch(loc) {
     case "top-left":
     case "left":
@@ -197,7 +197,7 @@ function getTeamX(loc) {
  * Translates a relative location to a y coordinate.
  */
 function getTeamY(loc) {
-  var windowHeight = document.body.clientHeight;
+  var windowHeight = window.innerHeight;
   var teamAreaHeight = windowHeight - LEGEND_HEIGHT - BORDER_WIDTH;
   switch(loc) {
     case "top-left":
@@ -222,8 +222,8 @@ function getTeamY(loc) {
  */
 function redraw()
 {
-  var windowWidth = document.body.clientWidth;
-  var windowHeight = document.body.clientHeight;
+  var windowWidth = window.innerWidth;
+  var windowHeight = window.innerHeight;
 
   // resize the svg
   svg.attr("width", windowWidth)
@@ -232,7 +232,7 @@ function redraw()
   // resize the legend
   svg.selectAll(".legend")
      .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH)
-     .attr("width", document.body.clientWidth - BORDER_WIDTH * 2);
+     .attr("width", windowWidth - BORDER_WIDTH * 2);
 
   // move teams appropriately
   svg.selectAll(".team").data(g_teams)
@@ -279,6 +279,8 @@ function handleTeams(msg) {
  */
 function handleLegend(msg) {
   var services = msg.services;
+  var windowHeight = window.innerHeight;
+  var legendWidth = window.innerWidth - BORDER_WIDTH * 2;
 
   var legendHtml = "";
   for (var i = 0; i < services.length; i++) {
@@ -287,16 +289,12 @@ function handleLegend(msg) {
     legendHtml += "</font>";
   }
 
-  var legendWidth = document.body.clientWidth - BORDER_WIDTH * 2;
-  var windowHeight = document.body.clientHeight;
-
   var g = svg.append("svg")
              .attr("x", BORDER_WIDTH)
              .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH)
              .attr("width", legendWidth)
              .attr("height", LEGEND_HEIGHT)
              .classed("legend", true);
-
 
   g.append("rect")
    .attr("x", 0)
