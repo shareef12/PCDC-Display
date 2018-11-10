@@ -15,7 +15,6 @@ when, along with how teams and events are displayed.
 """
 
 import argparse
-import datetime
 import json
 import logging
 import os
@@ -23,7 +22,6 @@ import sys
 import threading
 
 import redis
-import tornado.httpserver
 import tornado.ioloop
 import tornado.web
 import tornado.websocket
@@ -70,11 +68,12 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, *kwargs)
-        self.timeouts = []
+        self.connected = False
 
     def open(self):
         """Initialize the client by sending the legend and team locations."""
         logger.info("Websocket opened")
+        self.connected = True
         LISTENERS.append(self)
 
         logger.info("Initializing legend")
@@ -87,8 +86,8 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
 
     def on_redis_message(self, msg):
         """Handle a message received from Redis."""
-        # TODO: Ensure we're removing the right element and we don't have leaks
-        self.timeouts = self.timeouts[1:]
+        if not self.connected:
+            return
 
         try:
             data = json.loads(msg["data"].decode("ascii"))
@@ -111,33 +110,28 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
         self.write_message(json.dumps(msg))
 
     def on_close(self):
-        """Clean up - cancel any pending events scheduled for this client."""
-        print("[*] Closing connection.")
+        """Handle client close. Stop listening for redis messages."""
+        logger.info("Closing connection")
         LISTENERS.remove(self)
-
-        # Remove all pending timeouts
-        io_loop = tornado.ioloop.IOLoop.instance()
-        for timeout in self.timeouts:
-            io_loop.remove_timeout(timeout)
+        self.connected = False
 
 
-def schedule_redis_message(io_loop, handler, *args):
+def schedule_redis_message(message):
     """Callback to schedule a callback after a specified delay."""
-    handle = io_loop.add_timeout(datetime.timedelta(seconds=DELAY_SECONDS),
-                                 handler.on_redis_message, *args)
-    handler.timeouts.append(handle)
+    io_loop = tornado.ioloop.IOLoop.current()
+    for wshandler in LISTENERS:
+        io_loop.call_later(DELAY_SECONDS, wshandler.on_redis_message, message)
 
 
 def redis_listener(io_loop, pubsub):
     """Thread callback to handle received redis messages.
 
     Publish each message to every connected websocket client after a specified
-    delay. Since tornado's IOLoop.add_timeout() must be called from the event
+    delay. Since tornado's IOLoop.call_later() must be called from the event
     loop thread, schedule a callback to do this on the correct thread.
     """
     for message in pubsub.listen():
-        for handler in LISTENERS:
-            io_loop.add_callback(schedule_redis_message, io_loop, handler, message)
+        io_loop.add_callback(schedule_redis_message, message)
 
 
 def serve_forever(port, redis_server):
@@ -146,7 +140,7 @@ def serve_forever(port, redis_server):
     ps = redis_server.pubsub()
     ps.subscribe(REDIS_PUBSUB_NAME)
 
-    io_loop = tornado.ioloop.IOLoop.instance()
+    io_loop = tornado.ioloop.IOLoop.current()
     t = threading.Thread(target=redis_listener, args=(io_loop, ps))
     t.setDaemon(True)
     t.start()
