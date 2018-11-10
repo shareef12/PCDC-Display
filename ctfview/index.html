@@ -1,0 +1,396 @@
+<html>
+<head>
+
+<script src="/static/d3.min.js"></script>
+<link href='/static/index.css' rel='stylesheet'>
+
+</head>
+
+<body>
+<script>
+var proto = (window.location.protocol === "https") ? "wss:" : "ws:";
+var webSocket = new WebSocket(proto + "//" + location.host + "/websocket");
+
+// Team layout constants
+var BORDER_WIDTH = 10;
+var LEGEND_HEIGHT = 82;
+var TEAM_WIDTH = 200;
+var TEAM_HEIGHT = 150;
+
+// Traffic animation constants
+var ANIMATION_TYPE = "missile"
+var ANIMATION_DURATION = 3000;
+var ANIMATION_BORDER_WIDTH = 10;
+
+var g_teams = [];
+
+var svg = d3.select("body").append("svg")
+                           .attr("width", window.innerWidth)
+                           .attr("height", window.innerHeight)
+                           .attr("class", "pcdccontainer");
+
+/**
+ * Get the x and y coordinates for a team.
+ */
+function lookupTeam(teamname) {
+  var team = svg.selectAll(".team")
+                .filter(function(d) {
+                  return d.name === teamname;
+                });
+  return {"x": parseInt(team.attr("x")), "y": parseInt(team.attr("y"))};
+}
+
+function calcMidpoint(x1, y1, x2, y2, bend) {
+  if (y2 < y1 && x2 < x1) {
+    var tmpx = x2;
+    var tmpy = y2;
+    x2 = x1;
+    y2 = y1;
+    x1 = tmpx;
+    y1 = tmpy;
+  }
+  else if (y2 < y1) {
+    y1 = y2 + (y2=y1, 0);
+  }
+  else if (x2 < x1) {
+    x1 = x2 + (x2=x1, 0);
+  }
+
+  var radian = Math.atan(-((y2 - y1) / (x2 - x1)));
+  var r = Math.sqrt(x2 - x1) + Math.sqrt(y2 - y1);
+  var m1 = (x1 + x2) / 2;
+  var m2 = (y1 + y2) / 2;
+
+  var min = 2.5, max = 7.5;
+  //var min = 1, max = 7;
+  var arcIntensity = parseFloat((Math.random() * (max - min) + min).toFixed(2));
+
+  if (bend === true) {
+    var a = Math.floor(m1 - r * arcIntensity * Math.sin(radian));
+    var b = Math.floor(m2 - r * arcIntensity * Math.cos(radian));
+  }
+  else {
+    var a = Math.floor(m1 + r * arcIntensity * Math.sin(radian));
+    var b = Math.floor(m2 + r * arcIntensity * Math.cos(radian));
+  }
+
+  return {"x": a, "y": b};
+}
+
+/**
+ * Callback function to compute the translate and rotate values along a path.
+ *
+ * Width and height are only required if the object's x,y coordinates do not
+ * indicate the object's center. Pass 0 if the object is centered on it's x,y
+ * location.
+ *
+ * @param path The path to translate along.
+ * @param width Width of the object that is being translated.
+ * @param height Height of the object that is being translated.
+ * @param initialAngle Initial rotation angle required for the object being
+ *        translated.
+ */
+function translateAlong(path, width, height, initialAngle) {
+  var l = path.getTotalLength();
+  return function(i) {
+    return function(t) {
+      var p1 = path.getPointAtLength(t * l);
+      var p2 = null;
+      if (t * l + 3 > l) {
+        // We're at the end of the path - use a previous point to calculate
+        // the rotation.
+        p2 = p1;
+        p1 = path.getPointAtLength(t * l - 3);
+      }
+      else {
+        p2 = path.getPointAtLength(t * l + 3);
+      }
+
+      var angle = Math.atan2(p1.y - p2.y, p1.x - p2.x) * (180 / Math.PI);
+      return "translate(" + (p1.x - width / 2) + "," + (p1.y - height / 2) + ")" +
+             "rotate(" + (angle + 180 + initialAngle) +
+                     "," + (width / 2) + "," + (height / 2) + ")";
+    }
+  }
+}
+
+/**
+ * Draws a circle element and translates it along the given path.
+ */
+function drawCircleAnimation(path, circleRadius, color) {
+  svg.append("circle")
+     .attr("r", circleRadius)
+     .attr("fill", color)
+     .transition()
+       .duration(ANIMATION_DURATION)
+       .ease("ease-in")
+       .attrTween("transform", translateAlong(path, 0, 0, 0))
+       .each("end", function() {
+         d3.select(this)
+           .transition()
+             .duration(500)
+             .attr("r", circleRadius * 2.5)
+             .style("opacity",0).remove();
+       });
+}
+
+/**
+ * Draws a missile and translates it along the given path.
+ */
+function drawMissileAnimation(path) {
+  svg.append("image")
+     .attr("xlink:href", "/static/missile1.png")
+     .attr("width", "40")
+     .transition()
+       .duration(ANIMATION_DURATION)
+       .ease("ease-in")
+       .attrTween("transform", translateAlong(path, 40, 40, 45))
+       .each("end", function() {
+         d3.select(this)
+           .attr("xlink:href", "/static/explosion1.png")
+           .transition()
+             .duration(1000)
+             .style("opacity",0).remove();
+       });
+}
+
+/**
+ * Draws traffic between teams in response to a websocket message.
+ *
+ * Always send from the center of the source team to a random point within
+ * the receiving team.
+ */
+function handleTraffic(msg) {
+  var color = msg.color;
+  var from = lookupTeam(msg.from);
+  var to = lookupTeam(msg.to);
+
+  // compute the (x,y) locations for the start and end points
+  var bend = true;
+  var teamMidX = TEAM_WIDTH / 2;
+  var teamMidY = TEAM_HEIGHT / 2;
+  var fromX = from.x + teamMidX;
+  var fromY = from.y + teamMidY;
+  var toX = to.x + Math.floor(Math.random() * (TEAM_WIDTH - ANIMATION_BORDER_WIDTH * 2)) +
+                              ANIMATION_BORDER_WIDTH;
+  var toY = to.y + Math.floor(Math.random() * (TEAM_HEIGHT - ANIMATION_BORDER_WIDTH * 2)) +
+                              ANIMATION_BORDER_WIDTH;
+
+  var lineData = [
+    {"x": fromX, "y": fromY},
+    calcMidpoint(fromX, fromY, toX, toY, bend),
+    {"x": toX, "y": toY}
+  ];
+
+  var lineFunction = d3.svg.line()
+                           .interpolate("basis")
+                           .x(function(d) { return d.x; })
+                           .y(function(d) { return d.y; });
+
+  var lineGraph = svg.append("path")
+                     .attr("d", lineFunction(lineData))
+                     .attr("opacity",0.8)
+                     .attr("stroke", color)
+                     .attr("stroke-width", 2)
+                     .attr("fill", "none");
+
+  // draw the animation
+  switch(ANIMATION_TYPE) {
+    case "circle":
+      drawCircleAnimation(lineGraph.node(), msg.size, color);
+      break;
+    case "missile":
+      drawMissileAnimation(lineGraph.node());
+      break;
+  }
+
+  // draw the trailing line
+  var length = lineGraph.node().getTotalLength();
+  lineGraph.attr("stroke-dasharray", length + " " + length)
+           .attr("stroke-dashoffset", length)
+           .transition()
+             .duration(ANIMATION_DURATION)
+             .ease("ease-in")
+             .attr("stroke-dashoffset",0)
+             .each("end", function() {
+                d3.select(this)
+                  .transition()
+                    .duration(100)
+                    .style("opacity", 0)
+                    .remove();
+             });
+}
+
+/**
+ * Translates a relative location to an x coordinate.
+ */
+function getTeamX(loc) {
+  var windowWidth = window.innerWidth;
+  switch(loc) {
+    case "top-left":
+    case "left":
+    case "bottom-left":
+      return BORDER_WIDTH;
+    case "top":
+    case "middle":
+    case "bottom":
+      return (windowWidth / 2) - (TEAM_WIDTH / 2);
+    case "top-right":
+    case "right":
+    case "bottom-right":
+      return windowWidth - TEAM_WIDTH - BORDER_WIDTH;
+  }
+  return null;
+}
+
+/**
+ * Translates a relative location to a y coordinate.
+ */
+function getTeamY(loc) {
+  var windowHeight = window.innerHeight;
+  var teamAreaHeight = windowHeight - LEGEND_HEIGHT - BORDER_WIDTH;
+  switch(loc) {
+    case "top-left":
+    case "top":
+    case "top-right":
+      return BORDER_WIDTH;
+      break;
+    case "left":
+    case "middle":
+    case "right":
+      return (teamAreaHeight / 2) - (TEAM_HEIGHT / 2);
+    case "bottom-left":
+    case "bottom":
+    case "bottom-right":
+      return teamAreaHeight - TEAM_HEIGHT - BORDER_WIDTH;
+  }
+  return null;
+}
+
+/**
+ * Handles resize events. Redraw all svg elements.
+ */
+function redraw()
+{
+  var windowWidth = window.innerWidth;
+  var windowHeight = window.innerHeight;
+
+  // resize the svg
+  svg.attr("width", windowWidth)
+     .attr("height", windowHeight);
+
+  // resize the legend
+  svg.selectAll(".legend")
+     .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH)
+     .attr("width", windowWidth - BORDER_WIDTH * 2);
+
+  // move teams appropriately
+  svg.selectAll(".team").data(g_teams)
+     .attr("x", function(d) { return getTeamX(d.location); })
+     .attr("y", function(d) { return getTeamY(d.location); });
+}
+
+/**
+ * Creates boxes for individual teams in response to a websocket message.
+ *
+ * This message should only be received once during websocket initialization.
+ * Team locations are specified as relative locations, and are translated to
+ * x/y coordinates in javascript.
+ */
+function handleTeams(msg) {
+  g_teams = msg.teams;
+
+  var team = svg.selectAll(".team").data(g_teams).enter().append("svg")
+                .attr("x", function(d) { return getTeamX(d.location); })
+                .attr("y", function(d) { return getTeamY(d.location); })
+                .classed("team", true);
+
+  team.append("rect")
+      .attr("x", 0)
+      .attr("y", 0)
+      .attr("width", TEAM_WIDTH)
+      .attr("height", TEAM_HEIGHT)
+      .style("fill", function(d) { return d.color; })
+
+  team.append("foreignObject")
+      .attr("x", 1)
+      .attr("y", 1)
+      .attr("z", 100)
+      .attr("height", TEAM_HEIGHT - 2)
+      .attr("width", TEAM_WIDTH - 2)
+      .append("xhtml:span")
+        .html(function(d) { return d.display_name; });
+}
+
+/**
+ * Creates the legend in response to a websocket message.
+ *
+ * This message should only be received once during websocket initialization.
+ */
+function handleLegend(msg) {
+  var services = msg.services;
+  var windowHeight = window.innerHeight;
+  var legendWidth = window.innerWidth - BORDER_WIDTH * 2;
+
+  var legendHtml = "";
+  for (var i = 0; i < services.length; i++) {
+    legendHtml += "<font color=\"" + services[i].color + "\">";
+    legendHtml += "[" + services[i].name.toUpperCase() + "] ";
+    legendHtml += "</font>";
+  }
+
+  var g = svg.append("svg")
+             .attr("x", BORDER_WIDTH)
+             .attr("y", windowHeight - LEGEND_HEIGHT - BORDER_WIDTH)
+             .attr("width", legendWidth)
+             .attr("height", LEGEND_HEIGHT)
+             .classed("legend", true);
+
+  g.append("rect")
+   .attr("x", 0)
+   .attr("y", 0)
+   .attr("width", "100%")
+   .attr("height", "100%");
+
+  g.append("foreignObject")
+   .attr("x", "1%")
+   .attr("y", "1%")
+   .attr("width", "99%")
+   .attr("height", "99%")
+   .append("xhtml:span")
+     .attr("style", "font-size: 1.9em")
+     .html(legendHtml);
+}
+
+
+/**
+ * Dispatch messages from the websocket.
+ */
+webSocket.onmessage = function (e) {
+  // Wrap handler in an try/catch so we don't crash. Rather ignore a packet than crash the
+  // display during the competition.
+  try {
+    var msg = JSON.parse(e.data);
+    console.log(msg);
+    switch(msg.type) {
+      case "legend":
+        handleLegend(msg);
+        break;
+      case "teams":
+        handleTeams(msg);
+        break;
+      case "traffic":
+        handleTraffic(msg);
+        break;
+    }
+  }
+  catch(err) {
+    console.log(err);
+  }
+};
+
+// handle resize events from the browser
+window.addEventListener("resize", redraw);
+</script>
+</body>
+</html>
