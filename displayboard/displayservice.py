@@ -86,7 +86,12 @@ class WebSocketChatHandler(tornado.websocket.WebSocketHandler):
         size = data["size"]
         color = SERVICE_RGB[service]
 
-        msg = {"type": "traffic", "from": from_team, "to": to_team, "size": size, "color": color}
+        msg = {
+            "type": "traffic",
+            "from": from_team,
+            "to": to_team,
+            "size": size,
+            "color": color}
         self.write_message(json.dumps(msg))
 
     def on_close(self):

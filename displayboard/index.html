@@ -18,6 +18,7 @@ var TEAM_WIDTH = 200;
 var TEAM_HEIGHT = 150;
 
 // Traffic animation constants
+var ANIMATION_TYPE = "missile"
 var ANIMATION_DURATION = 3000;
 var ANIMATION_BORDER_WIDTH = 10;
 
@@ -41,8 +42,8 @@ function lookupTeam(teamname) {
 
 function calcMidpoint(x1, y1, x2, y2, bend) {
   if (y2 < y1 && x2 < x1) {
-    var tmpy = y2;
     var tmpx = x2;
+    var tmpy = y2;
     x2 = x1;
     y2 = y1;
     x1 = tmpx;
@@ -76,31 +77,89 @@ function calcMidpoint(x1, y1, x2, y2, bend) {
   return {"x": a, "y": b};
 }
 
-function translateAlong(path) {
+/**
+ * Callback function to compute the translate and rotate values along a path.
+ *
+ * Width and height are only required if the object's x,y coordinates do not
+ * indicate the object's center. Pass 0 if the object is centered on it's x,y
+ * location.
+ *
+ * @param path The path to translate along.
+ * @param width Width of the object that is being translated.
+ * @param height Height of the object that is being translated.
+ * @param initialAngle Initial rotation angle required for the object being
+ *        translated.
+ */
+function translateAlong(path, width, height, initialAngle) {
   var l = path.getTotalLength();
   return function(i) {
     return function(t) {
-      // Put in try/catch because sometimes floating point is stupid..
-      try {
-        var p = path.getPointAtLength(t * l);
-        return "translate(" + p.x + "," + p.y + ")";
+      var p1 = path.getPointAtLength(t * l);
+      var p2 = null;
+      if (t * l + 3 > l) {
+        // We're at the end of the path - use a previous point to calculate
+        // the rotation.
+        p2 = p1;
+        p1 = path.getPointAtLength(t * l - 3);
       }
-      catch(err) {
-        console.log("Caught exception.");
-        return "ERROR";
+      else {
+        p2 = path.getPointAtLength(t * l + 3);
       }
+
+      var angle = Math.atan2(p1.y - p2.y, p1.x - p2.x) * (180 / Math.PI);
+      return "translate(" + (p1.x - width / 2) + "," + (p1.y - height / 2) + ")" +
+             "rotate(" + (angle + 180 + initialAngle) +
+                     "," + (width / 2) + "," + (height / 2) + ")";
     }
   }
 }
 
 /**
- * Draw traffic between teams in response to a websocket message.
+ * Draws a circle element and translates it along the given path.
+ */
+function drawCircleAnimation(path, circleRadius, color) {
+  svg.append("circle")
+     .attr("r", circleRadius)
+     .attr("fill", color)
+     .transition()
+       .duration(ANIMATION_DURATION)
+       .ease("ease-in")
+       .attrTween("transform", translateAlong(path, 0, 0, 0))
+       .each("end", function() {
+         d3.select(this)
+           .transition()
+             .duration(500)
+             .attr("r", circleRadius * 2.5)
+             .style("opacity",0).remove();
+       });
+}
+
+/**
+ * Draws a missile and translates it along the given path.
+ */
+function drawMissileAnimation(path) {
+  svg.append("image")
+     .attr("xlink:href", "/static/missile1.png")
+     .attr("width", "40")
+     .transition()
+       .duration(ANIMATION_DURATION)
+       .ease("ease-in")
+       .attrTween("transform", translateAlong(path, 40, 40, 45))
+       .each("end", function() {
+         d3.select(this)
+           .transition()
+             .duration(1000)
+             .style("opacity",0).remove();
+       });
+}
+
+/**
+ * Draws traffic between teams in response to a websocket message.
  *
  * Always send from the center of the source team to a random point within
  * the receiving team.
  */
 function handleTraffic(msg) {
-  var circleRadius = msg.size;
   var color = msg.color;
   var from = lookupTeam(msg.from);
   var to = lookupTeam(msg.to);
@@ -134,27 +193,17 @@ function handleTraffic(msg) {
                      .attr("stroke-width", 2)
                      .attr("fill", "none");
 
-  if (translateAlong(lineGraph.node()) === "ERROR") {
-    return;
+  // draw the animation
+  switch(ANIMATION_TYPE) {
+    case "circle":
+      drawCircleAnimation(lineGraph.node(), msg.size, color);
+      break;
+    case "missile":
+      drawMissileAnimation(lineGraph.node());
+      break;
   }
 
-  // Circle follows the line
-  svg.append("circle")
-     .attr("r", circleRadius)
-     .attr("fill", color)
-     .transition()
-       .duration(ANIMATION_DURATION)
-       .ease("ease-in")
-       .attrTween("transform", translateAlong(lineGraph.node()))
-       .each("end", function() {
-         d3.select(this)
-           .transition()
-             .duration(500)
-             .attr("r", circleRadius * 2.5)
-             .style("opacity",0).remove();
-       });
-
-
+  // draw the trailing line
   var length = lineGraph.node().getTotalLength();
   lineGraph.attr("stroke-dasharray", length + " " + length)
            .attr("stroke-dashoffset", length)
