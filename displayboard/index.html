@@ -147,6 +147,7 @@ function drawMissileAnimation(path) {
        .attrTween("transform", translateAlong(path, 40, 40, 45))
        .each("end", function() {
          d3.select(this)
+           .attr("xlink:href", "/static/explosion1.png")
            .transition()
              .duration(1000)
              .style("opacity",0).remove();
@@ -366,10 +367,9 @@ function handleLegend(msg) {
  * Dispatch messages from the websocket.
  */
 webSocket.onmessage = function (e) {
-  // Put everything in an try/catch so we don't crash. Rather ignore a packet than crash the
+  // Wrap handler in an try/catch so we don't crash. Rather ignore a packet than crash the
   // display during the competition.
-
-  //try {
+  try {
     var msg = JSON.parse(e.data);
     console.log(msg);
     switch(msg.type) {
@@ -383,10 +383,10 @@ webSocket.onmessage = function (e) {
         handleTraffic(msg);
         break;
     }
-  //}
-  //catch(err) {
-  //  console.log("Recovered from error.")
-  //}
+  }
+  catch(err) {
+    console.log(err);
+  }
 };
 
 // handle resize events from the browser
