@@ -16,13 +16,13 @@ body {
   padding: 0;
 }
 
-.pcdccontainer {
+.svgcontainer {
   background:rgb(00,00,00);
   background-image: url("binary_background3.jpg");
 
 }
 
-.pcdccontainer span {
+.svgcontainer span {
   font-family: "Exo 2", Exo, "Helvetica Neue", Helvetica, sans-serif, Arial;
   font-weight: 800;
   font-size: 2.2em;

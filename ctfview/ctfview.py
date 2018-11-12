@@ -33,7 +33,7 @@ DELAY_SECONDS = 1
 REDIS_PUBSUB_NAME = "ctfview"
 
 TEAMS = [
-    {"name": "army",     "display_name": "Army",      "location": "left",   "color": "Olive"},
+    {"name": "army",     "display_name": "Army",      "location": "left",   "color": "#B7950B"},
     {"name": "airforce", "display_name": "Air Force", "location": "right",  "color": "Blue"},
     {"name": "observer", "display_name": "Observer",  "location": "top",    "color": "Red"},
     {"name": "zombie",   "display_name": "Zombie",    "location": "bottom", "color": "DimGray"},
